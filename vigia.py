@@ -105,22 +105,30 @@ def revisar(agenda_id):
 
 
 def enviar_telegram(texto):
+    """Manda el texto a cada chat de TELEGRAM_CHAT_ID (uno o varios, separados por coma).
+
+    Devuelve True si llegó al menos a uno: así un chat roto no hace repetir
+    el aviso a los demás en cada revisión.
+    """
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
+    chat_ids = [c.strip() for c in os.environ.get("TELEGRAM_CHAT_ID", "").split(",") if c.strip()]
+    if not token or not chat_ids:
         registrar("faltan TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID en .env, no se envía")
         return False
-    try:
-        resp = requests.post(
-            TELEGRAM_URL.format(token=token),
-            json={"chat_id": chat_id, "text": texto, "parse_mode": "HTML"},
-            timeout=15,
-        )
-        resp.raise_for_status()
-        return True
-    except requests.RequestException as exc:
-        registrar(f"falló el envío a Telegram: {type(exc).__name__}")
-        return False
+    enviados = 0
+    for i, chat_id in enumerate(chat_ids, 1):
+        try:
+            resp = requests.post(
+                TELEGRAM_URL.format(token=token),
+                json={"chat_id": chat_id, "text": texto, "parse_mode": "HTML"},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            enviados += 1
+        except requests.RequestException as exc:
+            # Se loguea el número de chat (1, 2...), no el id ni la URL, que lleva el token.
+            registrar(f"falló el envío a Telegram (chat {i}): {type(exc).__name__}")
+    return enviados > 0
 
 
 def enviar_pushover_emergencia(agenda_id):

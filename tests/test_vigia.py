@@ -128,6 +128,36 @@ def test_mensajes_escapan_el_ampersand_de_las_urls():
         assert "e=9&a=82" not in mensaje
 
 
+# --- Telegram a varios chats ---
+
+def _post_registrando(enviados, falla_en=None):
+    def post(url, json, timeout):
+        if json["chat_id"] == falla_en:
+            raise vigia.requests.ConnectionError("caído")
+        enviados.append(json["chat_id"])
+        return _Resp()
+    return post
+
+
+def test_telegram_manda_a_cada_chat_separado_por_coma(monkeypatch):
+    enviados = []
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "111, 222,")
+    monkeypatch.setattr(vigia.requests, "post", _post_registrando(enviados))
+    assert vigia.enviar_telegram("hola") is True
+    assert enviados == ["111", "222"]
+
+
+def test_telegram_si_falla_un_chat_igual_llega_a_los_demas(monkeypatch):
+    enviados = []
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "111,222")
+    monkeypatch.setattr(vigia.requests, "post", _post_registrando(enviados, falla_en="111"))
+    monkeypatch.setattr(vigia, "registrar", lambda linea: None)
+    assert vigia.enviar_telegram("hola") is True
+    assert enviados == ["222"]
+
+
 # --- argumentos ---
 
 def test_flag_desconocido_no_hace_una_revision(monkeypatch):

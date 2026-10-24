@@ -1,1 +1,12 @@
-{}
+{
+  "82": {
+    "resultado": "sin_cupos",
+    "errores": 0,
+    "avisado_ciego": false
+  },
+  "84": {
+    "resultado": "sin_cupos",
+    "errores": 0,
+    "avisado_ciego": false
+  }
+}

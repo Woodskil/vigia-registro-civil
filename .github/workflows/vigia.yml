@@ -1,8 +1,10 @@
 name: Vigia cupos Registro Civil
 
 on:
+  # El cron de GitHub no es confiable: en la práctica corre cada 2-5 horas.
+  # El disparador principal es cron-job.org, que llama a workflow_dispatch
+  # cada 5 minutos por la API; este schedule queda como respaldo.
   schedule:
-    # GitHub no garantiza el horario: suele atrasarse entre 5 y 20 minutos.
     - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
@@ -20,15 +22,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      # Acciones fijadas por SHA (no por tag, que puede moverse).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
 
+      # --require-hashes: pip rechaza cualquier archivo que no coincida con los
+      # hashes de requirements.txt. Este paso ve los secrets, así que acá no se
+      # instala pytest ni nada que no use el vigía.
       - name: Instalar dependencias
-        run: pip install -r requirements.txt
+        run: pip install --require-hashes -r requirements.txt
 
       - name: Revisar agendas
         env:
@@ -42,12 +48,18 @@ jobs:
       # Solo se commitea si cambió el estado (aparecen o se van los cupos), no
       # cada 5 minutos. Sin esto, cada corrida arrancaría de cero y avisaría
       # otra vez por los mismos cupos.
+      #
+      # GitHub desactiva el workflow si el repo pasa 60 días sin actividad, y
+      # sin cupos el estado no cambia nunca: si el último commit tiene más de
+      # 45 días, se hace un commit vacío para mantenerlo vivo.
       - name: Guardar estado-nube.json si cambió
         run: |
+          git config user.name "vigia-registro-civil"
+          git config user.email "actions@users.noreply.github.com"
           git add estado-nube.json
           if ! git diff --cached --quiet; then
-            git config user.name "vigia-registro-civil"
-            git config user.email "actions@users.noreply.github.com"
             git commit -m "chore: actualizar estado del vigía [skip ci]"
-            git push
+          elif [ $(( $(date +%s) - $(git log -1 --format=%ct) )) -gt $(( 45 * 86400 )) ]; then
+            git commit --allow-empty -m "chore: mantener vivo el workflow [skip ci]"
           fi
+          git push

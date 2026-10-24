@@ -67,6 +67,15 @@ def test_errores_sueltos_no_avisan_ni_borran_el_ultimo_resultado():
     assert estado["errores"] == 1
 
 
+def test_aviso_ciego_escapa_el_error_para_el_html_de_telegram():
+    # Los errores de requests traen cosas como "<urllib3.connection... at 0x..>",
+    # que Telegram rechaza con parse_mode HTML: el aviso no llegaría nunca.
+    detalle = "error de red: (<urllib3.connection.HTTPSConnection object at 0x7f>)"
+    mensaje = vigia.mensaje_ciego(82, detalle)
+    assert "<urllib3" not in mensaje
+    assert "&lt;urllib3.connection.HTTPSConnection object at 0x7f&gt;" in mensaje
+
+
 def test_avisa_una_sola_vez_cuando_queda_ciego():
     estado = {}
     mensajes = []

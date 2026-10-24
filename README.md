@@ -1,5 +1,22 @@
 # Inscripción de partida de nacimiento extranjera en Uruguay
 
+> **Эта копия** — форк [lgarciaj94/vigia-registro-civil](https://github.com/lgarciaj94/vigia-registro-civil)
+> с изменениями:
+> - зависимости закреплены по версиям и хешам (`pip install --require-hashes`);
+>   pytest вынесен в `requirements-dev.txt`, в Actions не ставится;
+> - экшены закреплены по SHA (checkout v7.0.1, setup-python v7.0.0);
+> - текст ошибки экранируется перед отправкой в Telegram (HTML);
+> - запуск в облаке: cron-job.org каждые 5 мин дёргает `workflow_dispatch`
+>   (свой cron GitHub срабатывает раз в 2–5 часов и оставлен как запасной);
+> - workflow делает пустой коммит, если репозиторий молчит 45+ дней
+>   (иначе GitHub отключает его через 60);
+> - локально: задача Планировщика Windows раз в минуту через `pythonw.exe`.
+>
+> Установка локально:
+> `python -m venv .venv` и
+> `.venv\Scripts\python -m pip install --require-hashes -r requirements.txt -r requirements-dev.txt`.
+> Обновлять зависимости — только с новыми хешами с PyPI, версии не моложе недели.
+
 Objetivo: inscribir (transcribir) mi partida de nacimiento extranjera en la
 Dirección Nacional del Registro de Estado Civil (DNREC), para tener la partida
 en formato uruguayo.

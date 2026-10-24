@@ -11,6 +11,7 @@ Uso:
     python vigia.py --prueba-alarma   # manda la alarma de Pushover (probar en silencio)
 """
 
+import html
 import json
 import os
 import sys
@@ -172,7 +173,7 @@ def mensaje_ciego(agenda_id, detalle):
         f"⚠️ <b>El vigía del Registro Civil no puede leer la agenda</b>\n"
         f"{nombre}\n"
         f"Lleva {ERRORES_PARA_AVISAR} revisiones seguidas sin reconocer la página "
-        f"({detalle or 'formato distinto al esperado'}). Puede que haya cupos con otro formato "
+        f"({html.escape(detalle) or 'formato distinto al esperado'}). Puede que haya cupos con otro formato "
         f"o que el sitio cambió. Miralo a mano: {URL_SAE.format(a=agenda_id)}"
     )
 

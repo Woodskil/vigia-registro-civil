@@ -6,7 +6,12 @@ on:
   # cada 5 minutos por la API; este schedule queda como respaldo.
   schedule:
     - cron: "*/5 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Solo mandar un mensaje de prueba a Telegram (--test)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -43,7 +48,7 @@ jobs:
           PUSHOVER_APP_TOKEN: ${{ secrets.PUSHOVER_APP_TOKEN }}
           PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
           VIGIA_ESTADO: estado-nube.json
-        run: python vigia.py
+        run: python vigia.py ${{ inputs.test && '--test' || '' }}
 
       # Solo se commitea si cambió el estado (aparecen o se van los cupos), no
       # cada 5 minutos. Sin esto, cada corrida arrancaría de cero y avisaría

@@ -34,7 +34,7 @@ def test_redireccion_al_login_no_es_con_cupos():
 
 def test_avisa_cuando_aparecen_cupos():
     mensaje, estado = vigia.procesar(82, "con_cupos", "", {"resultado": "sin_cupos"})
-    assert "Hay cupos" in mensaje
+    assert "Есть свободные места" in mensaje
     assert "tramites/iniciar/8942" in mensaje
     assert estado["resultado"] == "con_cupos"
 
@@ -84,7 +84,7 @@ def test_avisa_una_sola_vez_cuando_queda_ciego():
         mensajes.append(mensaje)
     avisos = [m for m in mensajes if m]
     assert len(avisos) == 1
-    assert "no puede leer" in avisos[0]
+    assert "не может прочитать" in avisos[0]
 
 
 def test_al_recuperarse_reinicia_el_contador_de_errores():
@@ -119,3 +119,18 @@ def test_sin_claves_de_pushover_no_intenta_enviar(monkeypatch):
     monkeypatch.delenv("PUSHOVER_USER_KEY", raising=False)
     monkeypatch.setattr(vigia.requests, "post", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no debía enviar")))
     assert vigia.enviar_pushover_emergencia(82) is False
+
+
+def test_mensajes_escapan_el_ampersand_de_las_urls():
+    # Telegram (parse_mode HTML) pide "&amp;"; la URL de la agenda trae "&a=".
+    for mensaje in (vigia.mensaje_cupos(82), vigia.mensaje_ciego(82, "")):
+        assert "e=9&amp;a=82" in mensaje
+        assert "e=9&a=82" not in mensaje
+
+
+# --- argumentos ---
+
+def test_flag_desconocido_no_hace_una_revision(monkeypatch):
+    monkeypatch.setattr(vigia.sys, "argv", ["vigia.py", "--tes"])
+    monkeypatch.setattr(vigia, "revisar", lambda *a: (_ for _ in ()).throw(AssertionError("no debía revisar")))
+    assert vigia.main() == 2

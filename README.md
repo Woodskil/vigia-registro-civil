@@ -74,8 +74,8 @@ Sin las de Pushover, el vigía avisa solo por Telegram.
 
 ### Comandos
 
-- Probar Telegram: `.venv\Scripts\python vigia.py --prueba`
-- Probar la alarma (con el iPhone en silencio): `.venv\Scripts\python vigia.py --prueba-alarma`
+- Probar Telegram: `.venv\Scripts\python vigia.py --test`
+- Probar la alarma (con el iPhone en silencio): `.venv\Scripts\python vigia.py --test-alarm`
 - Tests: `.venv\Scripts\python -m pytest tests`
 - Historial local: `vigia.log`. Último estado: `estado.json` (local) y `estado-nube.json` (Actions).
 - Apagar el vigía cuando ya tenga la cita (los dos lados):

@@ -6,9 +6,11 @@ la página dice "En la oficina seleccionada no hay cupos disponibles"; cuando
 ese texto desaparece, avisamos.
 
 Uso:
-    python vigia.py            # una revisión (para el Programador de tareas)
-    python vigia.py --prueba          # manda un mensaje de prueba a Telegram
-    python vigia.py --prueba-alarma   # manda la alarma de Pushover (probar en silencio)
+    python vigia.py               # una revisión (para el Programador de tareas)
+    python vigia.py --test        # manda un mensaje de prueba a Telegram
+    python vigia.py --test-alarm  # manda la alarma de Pushover (probar en silencio)
+
+Los avisos (Telegram y Pushover) van en ruso.
 """
 
 import html
@@ -57,6 +59,15 @@ AGENDAS = {
         "https://bpmgob.mec.gub.uy/autenticacion/login?redirect=https://bpmgob.mec.gub.uy/tramites/iniciar/8945",
     ),
 }
+
+# Cómo se llama cada agenda en los avisos (en ruso); el nombre oficial de
+# AGENDAS se sigue usando para reconocer la página.
+NOMBRES_AVISO = {
+    82: "Регистрация иностранных свидетельств — только сам владелец",
+    84: "Регистрация иностранных свидетельств — владелец или представитель",
+}
+
+USO = "Uso: python vigia.py [--test | --test-alarm]"
 
 SIN_CUPOS = "no hay cupos disponibles"
 
@@ -118,17 +129,17 @@ def enviar_pushover_emergencia(agenda_id):
     usuario = os.environ.get("PUSHOVER_USER_KEY")
     if not token or not usuario:
         return False
-    nombre, reservar = AGENDAS[agenda_id]
+    _, reservar = AGENDAS[agenda_id]
     try:
         resp = requests.post(
             PUSHOVER_URL,
             data={
                 "token": token,
                 "user": usuario,
-                "title": "¡Hay cupos en el Registro Civil!",
-                "message": f"{nombre}. Reservá ya y pagá en 48 h.",
+                "title": "Есть места в Registro Civil!",
+                "message": f"{NOMBRES_AVISO[agenda_id]}. Бронируйте сейчас и оплатите в течение 48 ч.",
                 "url": reservar,
-                "url_title": "Reservar",
+                "url_title": "Забронировать",
                 "priority": 2,
                 "retry": REPETIR_CADA,
                 "expire": DEJAR_DE_REPETIR,
@@ -159,22 +170,24 @@ def cargar_estado():
 def mensaje_cupos(agenda_id):
     nombre, reservar = AGENDAS[agenda_id]
     return (
-        f"🟢 <b>¡Hay cupos en el Registro Civil!</b>\n"
-        f"{nombre}\n\n"
-        f"Reservá ya: {reservar}\n"
-        f"Ver agenda: {URL_SAE.format(a=agenda_id)}\n\n"
-        f"Recordá: después de reservar tenés 48 h para pagar $U 1.436."
+        f"🟢 <b>Есть свободные места в Registro Civil!</b>\n"
+        f"{NOMBRES_AVISO[agenda_id]}\n"
+        f"<i>{nombre}</i>\n\n"
+        # En parse_mode HTML, Telegram exige "&amp;" en vez de "&" (las URLs lo traen).
+        f"Забронировать: {html.escape(reservar)}\n"
+        f"Посмотреть расписание: {html.escape(URL_SAE.format(a=agenda_id))}\n\n"
+        f"Важно: после бронирования нужно оплатить $U 1.436 в течение 48 часов, "
+        f"иначе бронь отменят."
     )
 
 
 def mensaje_ciego(agenda_id, detalle):
-    nombre, _ = AGENDAS[agenda_id]
     return (
-        f"⚠️ <b>El vigía del Registro Civil no puede leer la agenda</b>\n"
-        f"{nombre}\n"
-        f"Lleva {ERRORES_PARA_AVISAR} revisiones seguidas sin reconocer la página "
-        f"({html.escape(detalle) or 'formato distinto al esperado'}). Puede que haya cupos con otro formato "
-        f"o que el sitio cambió. Miralo a mano: {URL_SAE.format(a=agenda_id)}"
+        f"⚠️ <b>Бот не может прочитать страницу записи Registro Civil</b>\n"
+        f"{NOMBRES_AVISO[agenda_id]}\n"
+        f"Уже {ERRORES_PARA_AVISAR} проверок подряд страница не распознаётся "
+        f"({html.escape(detalle) or 'формат не тот, что ожидался'}). Возможно, места появились, "
+        f"но страница выглядит иначе, или сайт изменился. Проверьте вручную: {html.escape(URL_SAE.format(a=agenda_id))}"
     )
 
 
@@ -203,12 +216,18 @@ def procesar(agenda_id, resultado, detalle, previo):
 def main():
     load_dotenv(AQUI / ".env")
 
-    if "--prueba" in sys.argv:
-        ok = enviar_telegram("🔔 Prueba del vigía de cupos del Registro Civil. Si ves esto, los avisos llegan.")
+    # Un flag mal escrito (p. ej. "--tes") no debe pasar por una revisión normal.
+    args = sys.argv[1:]
+    if len(args) > 1 or (args and args[0] not in ("--test", "--test-alarm")):
+        print(f"Argumento desconocido: {' '.join(args)}\n{USO}", file=sys.stderr)
+        return 2
+
+    if "--test" in args:
+        ok = enviar_telegram("🔔 Тестовое сообщение от бота Registro Civil. Если вы его видите, уведомления работают.")
         registrar(f"mensaje de prueba {'enviado' if ok else 'NO enviado'}")
         return 0 if ok else 1
 
-    if "--prueba-alarma" in sys.argv:
+    if "--test-alarm" in args:
         # Manda la alarma real de Pushover (agenda 82), para probarla con el iPhone en silencio.
         ok = enviar_pushover_emergencia(82)
         registrar(f"alarma de prueba {'enviada' if ok else 'NO enviada (¿faltan claves de Pushover en .env?)'}")

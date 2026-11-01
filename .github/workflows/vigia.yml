@@ -1,11 +1,9 @@
 name: Vigia cupos Registro Civil
 
 on:
-  # El cron de GitHub no es confiable: en la práctica corre cada 2-5 horas.
-  # El disparador principal es cron-job.org, que llama a workflow_dispatch
-  # cada 5 minutos por la API; este schedule queda como respaldo.
-  schedule:
-    - cron: "*/5 * * * *"
+  # Sin schedule: el cron de GitHub corre cada 2-5 horas y duplicaba la tarea
+  # local. Solo corre cuando lo dispara cron-job.org (workflow_dispatch por la
+  # API) o a mano desde la pestaña Actions.
   workflow_dispatch:
     inputs:
       test:
@@ -53,18 +51,12 @@ jobs:
       # Solo se commitea si cambió el estado (aparecen o se van los cupos), no
       # cada 5 minutos. Sin esto, cada corrida arrancaría de cero y avisaría
       # otra vez por los mismos cupos.
-      #
-      # GitHub desactiva el workflow si el repo pasa 60 días sin actividad, y
-      # sin cupos el estado no cambia nunca: si el último commit tiene más de
-      # 45 días, se hace un commit vacío para mantenerlo vivo.
       - name: Guardar estado-nube.json si cambió
         run: |
-          git config user.name "vigia-registro-civil"
-          git config user.email "actions@users.noreply.github.com"
           git add estado-nube.json
           if ! git diff --cached --quiet; then
+            git config user.name "vigia-registro-civil"
+            git config user.email "actions@users.noreply.github.com"
             git commit -m "chore: actualizar estado del vigía [skip ci]"
-          elif [ $(( $(date +%s) - $(git log -1 --format=%ct) )) -gt $(( 45 * 86400 )) ]; then
-            git commit --allow-empty -m "chore: mantener vivo el workflow [skip ci]"
+            git push
           fi
-          git push
